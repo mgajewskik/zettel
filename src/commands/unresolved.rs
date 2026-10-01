@@ -1,26 +1,35 @@
 use std::path::PathBuf;
 
 use crate::error::{CliError, ExitStatus};
+use crate::graph;
 use crate::output::{self, BrokenLinkOut, Format};
 use crate::vault_util;
 
-/// List broken (unresolved) links. Optional path filters restrict which source notes are scanned.
+/// List broken (unresolved) links.
+///
+/// Path filters restrict which *source* notes are reported. Resolution always
+/// uses the full vault graph (minus media/canvas). Archive sources are excluded
+/// by default; pass `include_archive` to opt in.
 pub fn cmd_unresolved(
     vault: Option<PathBuf>,
     format: Format,
     path_filters: &[PathBuf],
+    include_archive: bool,
 ) -> Result<ExitStatus, CliError> {
     let v = vault_util::open_vault(vault)?;
-    let filter = vault_util::make_filter(v.path(), path_filters);
-    let report = v.check(filter);
+    let notes = graph::load_notes(&v);
+    let broken = graph::find_broken_links(&notes, v.path());
 
-    let items: Vec<BrokenLinkOut> = report
-        .broken_links
-        .iter()
+    let items: Vec<BrokenLinkOut> = broken
+        .into_iter()
+        .filter(|b| {
+            graph::source_included(&b.source_path, v.path(), path_filters, include_archive)
+        })
         .map(|b| BrokenLinkOut {
             source_path: output::rel_path(&b.source_path, v.path()),
             line: b.line,
-            text: b.text.clone(),
+            text: b.text,
+            target: b.target,
         })
         .collect();
 
