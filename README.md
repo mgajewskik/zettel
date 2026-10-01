@@ -4,8 +4,9 @@ Fast, Obsidian-compatible CLI for wikilink graph queries. Single static binary n
 
 Built on [`obsidian-rs-core`](https://crates.io/crates/obsidian-rs-core) (Apache-2.0) for note
 resolution, outbound links, backlinks, vault health checks, and search — this crate does **not**
-reimplement the link graph. A thin wrapper adds path-style wiki targets (`[[folder/Note]]`) for
-backlinks and unresolved checks.
+reimplement the link graph. A thin wrapper adds Obsidian-like wiki resolution for backlinks and
+unresolved checks: path-style (`[[folder/Note]]`), same-folder basename (`[[Note]]` / `[[Note.md]]`),
+then unique vault-wide basename (ambiguous basenames stay unresolved).
 
 ## Install
 
