@@ -84,6 +84,31 @@ fn check_links_inbox_not_flagged() {
 }
 
 #[test]
+fn check_links_area_to_source_not_flagged() {
+    let assert = zettel_check()
+        .args(["--format", "json", "check-links", "--rule", "zettel"])
+        .assert()
+        .failure()
+        .code(1);
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout);
+    assert!(
+        !stdout.contains("area/"),
+        "area/** must not be flagged as permanent→source: {stdout}"
+    );
+}
+
+#[test]
+fn check_links_root_moc_to_source_flagged() {
+    zettel_check()
+        .args(["check-links", "--rule", "zettel"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::contains("moc-overview"))
+        .stdout(predicate::str::contains("source/foo"));
+}
+
+#[test]
 fn check_links_basename_resolving_to_source() {
     zettel_check()
         .args(["check-links", "--rule", "zettel"])
@@ -113,6 +138,17 @@ fn check_links_path_filter() {
         .assert()
         .success()
         .code(0);
+}
+
+#[test]
+fn check_links_scope_root_default() {
+    // Explicit --scope root matches default behavior (still finds violations)
+    zettel_check()
+        .args(["check-links", "--rule", "zettel", "--scope", "root"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::contains("perm-to-source"));
 }
 
 #[test]
