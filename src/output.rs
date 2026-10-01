@@ -20,6 +20,9 @@ pub struct LinkOut {
     pub line: usize,
     pub col_start: usize,
     pub col_end: usize,
+    pub resolved: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_path: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -34,6 +37,8 @@ pub struct BrokenLinkOut {
     pub source_path: String,
     pub line: usize,
     pub text: String,
+    /// Parsed wiki target or markdown URL path (without surrounding markup).
+    pub target: String,
 }
 
 #[derive(Serialize)]
@@ -52,7 +57,9 @@ pub struct ExistsOut {
     pub note: Option<NoteOut>,
 }
 
-pub fn link_to_out(ll: &LocatedLink) -> LinkOut {
+pub fn link_to_out(ll: &LocatedLink, resolved_path: Option<&str>) -> LinkOut {
+    let resolved = resolved_path.is_some();
+    let resolved_path = resolved_path.map(|s| s.to_string());
     match &ll.link {
         Link::Wiki {
             target,
@@ -66,6 +73,8 @@ pub fn link_to_out(ll: &LocatedLink) -> LinkOut {
             line: ll.location.line,
             col_start: ll.location.col_start,
             col_end: ll.location.col_end,
+            resolved,
+            resolved_path,
         },
         Link::Markdown { text, url } => LinkOut {
             kind: "markdown".into(),
@@ -75,6 +84,8 @@ pub fn link_to_out(ll: &LocatedLink) -> LinkOut {
             line: ll.location.line,
             col_start: ll.location.col_start,
             col_end: ll.location.col_end,
+            resolved,
+            resolved_path,
         },
         Link::Embed {
             target,
@@ -88,6 +99,8 @@ pub fn link_to_out(ll: &LocatedLink) -> LinkOut {
             line: ll.location.line,
             col_start: ll.location.col_start,
             col_end: ll.location.col_end,
+            resolved,
+            resolved_path,
         },
     }
 }
@@ -184,9 +197,9 @@ pub fn print_notes_text(notes: &[NoteOut]) {
     for n in notes {
         let title = n.title.as_deref().unwrap_or("");
         if title.is_empty() {
-            println!("{}\t{}", n.path, n.id);
+            println!("{}	{}", n.path, n.id);
         } else {
-            println!("{}\t{}\t{}", n.path, n.id, title);
+            println!("{}	{}	{}", n.path, n.id, title);
         }
     }
 }
