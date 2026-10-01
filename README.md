@@ -17,7 +17,23 @@ cargo build --release
 # → target/release/zettel
 ```
 
+Prebuilt binaries for Linux (x86_64), macOS (aarch64 + x86_64), and Windows (x86_64) are attached to
+[GitHub Releases](https://github.com/mgajewskik/zettel/releases) when a version tag is pushed (see
+[Releases](#releases)).
+
 **Rust:** edition 2024 / MSRV **≥ 1.88** (see `rust-toolchain.toml`). Use [rustup](https://rustup.rs/).
+
+## Releases
+
+Cut a release by tagging `main` and pushing the tag (do **not** commit binaries into the repo):
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+That triggers `.github/workflows/release.yml`: `cargo test`, then cross-platform release builds, then
+a GitHub Release with assets named `zettel-<os>-<arch>` (Windows: `.exe` suffix).
 
 ## Vault configuration
 
@@ -62,7 +78,7 @@ zettel --vault ./tests/fixtures/vault find gamma
 ### Exit codes
 
 | Code | Meaning |
-|------|---------|
+|------|--------|
 | 0 | Success |
 | 1 | Issues found (`unresolved` nonempty, `exists`/`find` miss) |
 | 2 | Usage / config error (missing vault, bad args) |
@@ -89,6 +105,8 @@ notes under `media/` and `canvas/` directory components when scanning (`unresolv
 cargo test
 cargo build --release
 ```
+
+CI runs `cargo test` on pushes and PRs to `main` (`.github/workflows/ci.yml`).
 
 Synthetic fixtures live under `tests/fixtures/` (fake notes only — safe to publish).
 
