@@ -14,18 +14,32 @@ pub enum CheckRule {
     Zettel,
 }
 
+/// Which notes count as permanents for `check-links`.
+///
+/// Currently only vault-root `*.md` (the zettel / CONTEXT convention).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+pub enum CheckScope {
+    /// Only `*.md` files directly under the vault root (default).
+    #[default]
+    Root,
+}
+
 /// Enforce vault link conventions (`--rule zettel`).
 ///
-/// Path filters restrict which *permanent source* notes are checked.
+/// Permanents are vault-root `*.md` only (`--scope root`, the default).
+/// Path filters restrict which permanent sources are checked.
 /// Resolution always uses the full vault graph (minus media/canvas).
-/// Archive permanents are excluded by default; pass `include_archive` to opt in.
+/// Archive sources are excluded by default; pass `include_archive` to opt in
+/// (no-op for root-only permanents, kept for filter parity with `unresolved`).
 pub fn cmd_check_links(
     vault: Option<PathBuf>,
     format: Format,
     rule: CheckRule,
+    scope: CheckScope,
     path_filters: &[PathBuf],
     include_archive: bool,
 ) -> Result<ExitStatus, CliError> {
+    let _ = scope; // Root is the only scope; documents the explicit default.
     let v = vault_util::open_vault(vault)?;
     let notes = graph::load_notes(&v);
 
