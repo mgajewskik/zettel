@@ -1,4 +1,4 @@
-//! Integration tests for path-style wiki graph helpers.
+//! Integration tests for path-style and same-folder wiki graph helpers.
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,7 +28,11 @@ fn path_style_wiki_resolves_and_backlinks() {
 
     let vault = Vault::open(dir.path()).unwrap();
     let notes = load_notes(&vault);
-    let target = resolve_wiki_target("folder/target", &notes, vault.path()).unwrap();
+    let linker = notes
+        .iter()
+        .find(|n| n.path.ends_with("inbox/linker.md"))
+        .unwrap();
+    let target = resolve_wiki_target("folder/target", linker, &notes, vault.path()).unwrap();
     assert_eq!(target.id, "path-target");
 
     let bl = find_backlinks(&notes, target, vault.path());
@@ -39,6 +43,107 @@ fn path_style_wiki_resolves_and_backlinks() {
     assert!(
         broken.iter().all(|b| b.target != "folder/target"),
         "path-style link should not be unresolved: {broken:?}"
+    );
+}
+
+#[test]
+fn same_folder_basename_resolves_with_and_without_md() {
+    let dir = tempfile::tempdir().unwrap();
+    write_note(
+        &dir.path().join("inbox/b.md"),
+        "---\nid: note-b\n---\n# B\n",
+    );
+    write_note(
+        &dir.path().join("inbox/a.md"),
+        "---\nid: note-a\n---\nSee [[b]] and [[b.md]].\n",
+    );
+
+    let vault = Vault::open(dir.path()).unwrap();
+    let notes = load_notes(&vault);
+    let a = notes
+        .iter()
+        .find(|n| n.path.ends_with("inbox/a.md"))
+        .unwrap();
+    let b = resolve_wiki_target("b", a, &notes, vault.path()).unwrap();
+    assert!(b.path.ends_with("inbox/b.md"));
+    let b_md = resolve_wiki_target("b.md", a, &notes, vault.path()).unwrap();
+    assert_eq!(b.path, b_md.path);
+
+    let bl = find_backlinks(&notes, b, vault.path());
+    assert_eq!(bl.len(), 1);
+    assert!(bl[0].0.path.ends_with("inbox/a.md"));
+
+    let broken = find_broken_links(&notes, vault.path());
+    assert!(
+        broken
+            .iter()
+            .all(|x| x.target != "b" && x.target != "b.md"),
+        "same-folder basename should resolve: {broken:?}"
+    );
+}
+
+#[test]
+fn same_folder_wins_over_other_folder_duplicate_basename() {
+    let dir = tempfile::tempdir().unwrap();
+    write_note(
+        &dir.path().join("inbox/b.md"),
+        "---\nid: inbox-b\n---\n# Inbox B\n",
+    );
+    write_note(
+        &dir.path().join("other/b.md"),
+        "---\nid: other-b\n---\n# Other B\n",
+    );
+    write_note(
+        &dir.path().join("inbox/a.md"),
+        "---\nid: note-a\n---\nSee [[b]].\n",
+    );
+
+    let vault = Vault::open(dir.path()).unwrap();
+    let notes = load_notes(&vault);
+    let a = notes
+        .iter()
+        .find(|n| n.path.ends_with("inbox/a.md"))
+        .unwrap();
+    let resolved = resolve_wiki_target("b", a, &notes, vault.path()).unwrap();
+    assert!(
+        resolved.path.ends_with("inbox/b.md"),
+        "same-folder note must win: {:?}",
+        resolved.path
+    );
+    assert_eq!(resolved.id, "inbox-b");
+}
+
+#[test]
+fn ambiguous_basename_without_same_folder_stays_unresolved() {
+    let dir = tempfile::tempdir().unwrap();
+    write_note(
+        &dir.path().join("folder1/b.md"),
+        "---\nid: b-one\n---\n# B1\n",
+    );
+    write_note(
+        &dir.path().join("folder2/b.md"),
+        "---\nid: b-two\n---\n# B2\n",
+    );
+    write_note(
+        &dir.path().join("inbox/linker.md"),
+        "---\nid: linker\n---\nSee [[b]].\n",
+    );
+
+    let vault = Vault::open(dir.path()).unwrap();
+    let notes = load_notes(&vault);
+    let linker = notes
+        .iter()
+        .find(|n| n.path.ends_with("inbox/linker.md"))
+        .unwrap();
+    assert!(
+        resolve_wiki_target("b", linker, &notes, vault.path()).is_none(),
+        "ambiguous basename must not silently resolve"
+    );
+
+    let broken = find_broken_links(&notes, vault.path());
+    assert!(
+        broken.iter().any(|b| b.target == "b"),
+        "ambiguous basename should be unresolved: {broken:?}"
     );
 }
 
