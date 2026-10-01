@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use zettel::commands;
+use zettel::commands::{self, FindMode};
 use zettel::output::Format;
 
 #[derive(Parser, Debug)]
@@ -40,19 +40,31 @@ enum Commands {
     },
     /// List broken (unresolved) links
     Unresolved {
-        /// Optional path prefixes to restrict which source notes are scanned
+        /// Optional path filters: only report broken links whose *source* matches
         #[arg(value_name = "PATH")]
         paths: Vec<PathBuf>,
+
+        /// Include notes under archive/ as sources (excluded by default)
+        #[arg(long)]
+        include_archive: bool,
     },
     /// Check whether a note resolves (exit 1 if not found)
     Exists {
         /// Note id, alias, title, stem, or path
         query: String,
     },
-    /// Search notes by id, title, alias, or content
+    /// Search notes by id, path, title, alias, or content
     Find {
         /// Search query
         query: String,
+
+        /// Search mode (default: auto = structural first, content fallback)
+        #[arg(long, value_enum, default_value_t = FindMode::Auto)]
+        mode: FindMode,
+
+        /// Include notes under archive/ (excluded by default)
+        #[arg(long)]
+        include_archive: bool,
     },
 }
 
@@ -64,11 +76,16 @@ fn main() -> ExitCode {
         Commands::Backlinks { note } => {
             commands::cmd_backlinks(cli.vault.clone(), cli.format, note)
         }
-        Commands::Unresolved { paths } => {
-            commands::cmd_unresolved(cli.vault.clone(), cli.format, paths)
-        }
+        Commands::Unresolved {
+            paths,
+            include_archive,
+        } => commands::cmd_unresolved(cli.vault.clone(), cli.format, paths, *include_archive),
         Commands::Exists { query } => commands::cmd_exists(cli.vault.clone(), cli.format, query),
-        Commands::Find { query } => commands::cmd_find(cli.vault.clone(), cli.format, query),
+        Commands::Find {
+            query,
+            mode,
+            include_archive,
+        } => commands::cmd_find(cli.vault.clone(), cli.format, query, *mode, *include_archive),
     };
 
     match result {
