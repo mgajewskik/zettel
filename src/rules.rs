@@ -6,12 +6,6 @@ use obsidian_core::{Link, LocatedLink, Note};
 
 use crate::graph::resolve_link;
 
-/// Reserved top-level folders that are **not** permanent notes under the
-/// `zettel` check-links rule (see RULES.md).
-pub const NON_PERMANENT_DIRS: &[&str] = &[
-    "inbox", "source", "project", "archive", "media", "canvas", "moc",
-];
-
 fn is_under_dir(path: &Path, vault_root: &Path, dir_name: &str) -> bool {
     let rel = path.strip_prefix(vault_root).unwrap_or(path);
     rel.components().any(|c| match c {
@@ -39,12 +33,27 @@ fn local_md_url_path(url: &str) -> Option<&str> {
     }
 }
 
-/// Whether a note path is a permanent note: vault-relative path is **not**
-/// under any of [`NON_PERMANENT_DIRS`].
+/// Whether a note path is a **permanent** note under the zettel rule.
+///
+/// Permanents are only `*.md` files **directly under the vault root** (no
+/// subdirectory). Matches CONTEXT convention: atomic permanents live at vault
+/// root after review.
+///
+/// This automatically excludes notes under `inbox/`, `source/`, `project/`,
+/// `archive/`, `area/`, `docs/`, `grok/`, `templates/`, `media/`, `canvas/`,
+/// `moc/`, and any other folder. Root `moc-*.md` files **are** permanents.
 pub fn is_permanent_note(path: &Path, vault_root: &Path) -> bool {
-    !NON_PERMANENT_DIRS
-        .iter()
-        .any(|d| is_under_dir(path, vault_root, d))
+    let Ok(rel) = path.strip_prefix(vault_root) else {
+        return false;
+    };
+    let mut comps = rel.components();
+    match (comps.next(), comps.next()) {
+        (Some(Component::Normal(name)), None) => Path::new(name)
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("md")),
+        _ => false,
+    }
 }
 
 /// Whether a vault-relative path (or absolute note path) lies under `source/`.
