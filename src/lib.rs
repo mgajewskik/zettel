@@ -2,5 +2,6 @@
 
 pub mod commands;
 pub mod error;
+pub mod graph;
 pub mod output;
 pub mod vault_util;
