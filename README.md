@@ -1,6 +1,6 @@
 # zettel
 
-Fast, Obsidian-compatible CLI for wikilink graph queries. Single static binary named `zettel`.
+Fast, Obsidian-compatible CLI for wikilink graph queries and vault link rules. Single static binary named `zettel`.
 
 Built on [`obsidian-rs-core`](https://crates.io/crates/obsidian-rs-core) (Apache-2.0) for note
 resolution, outbound links, backlinks, vault health checks, and search — this crate does **not**
@@ -53,7 +53,7 @@ export ZETTEL_VAULT=/path/to/your/vault
 zettel --vault /path/to/your/vault links alpha
 ```
 
-## Commands (P0)
+## Commands
 
 Global flags: `--vault <path>`, `--format text|json` (default: `text`).
 
@@ -64,6 +64,7 @@ Global flags: `--vault <path>`, `--format text|json` (default: `text`).
 | `zettel unresolved [path…]` | Broken links (optional path filters on **source** notes) |
 | `zettel exists <query>` | Resolve note by id / alias / title / stem / path |
 | `zettel find <query>` | Search by id, path, title, alias, or content |
+| `zettel check-links --rule zettel [path…]` | Flag permanent→`source/**` links (see [RULES.md](RULES.md)) |
 
 `<note>` / `<query>` use core’s stem + kebab-id + alias matching, plus vault-relative paths.
 
@@ -86,6 +87,13 @@ Archive sources (`archive/**`) are excluded by default; pass `--include-archive`
 
 `--include-archive` includes notes under `archive/` (excluded by default).
 
+### `check-links --rule zettel`
+
+Enforces the public folder convention in [RULES.md](RULES.md): **permanent** notes
+(not under `inbox/`, `source/`, `project/`, `archive/`, `media/`, `canvas/`, `moc/`)
+must not link to `source/**`. Source→permanent links are allowed. Optional path
+filters and `--include-archive` match `unresolved`. Exit **1** on violations.
+
 ### Examples
 
 ```bash
@@ -94,6 +102,7 @@ zettel --vault ./tests/fixtures/vault --format json backlinks folder/target
 zettel --vault ./tests/fixtures/vault unresolved inbox
 zettel --vault ./tests/fixtures/vault exists "Alpha Alias"
 zettel --vault ./tests/fixtures/vault find --mode path folder/target
+zettel --vault ./tests/fixtures/check_links_vault check-links --rule zettel
 ```
 
 ### Exit codes
@@ -101,7 +110,7 @@ zettel --vault ./tests/fixtures/vault find --mode path folder/target
 | Code | Meaning |
 |------|--------|
 | 0 | Success |
-| 1 | Issues found (`unresolved` nonempty, `exists`/`find` miss) |
+| 1 | Issues found (`unresolved`/`check-links` nonempty, `exists`/`find` miss) |
 | 2 | Usage / config error (missing vault, bad args) |
 
 ## Output
@@ -110,6 +119,7 @@ zettel --vault ./tests/fixtures/vault find --mode path folder/target
 - **json**: pretty-printed JSON for bots / scripts (`--format json`)
   - `links` / `backlinks`: each link includes `resolved` (bool) and optional `resolved_path`
   - `unresolved`: each item includes parsed `target`
+  - `check-links`: each item includes `target` and optional `resolved_path`
 
 ## Vault walk filters
 
