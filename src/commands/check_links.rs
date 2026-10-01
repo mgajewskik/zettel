@@ -30,7 +30,7 @@ pub fn cmd_check_links(
     let notes = graph::load_notes(&v);
 
     let violations = match rule {
-        CheckRule::Zettel => graph::find_zettel_source_link_violations(&notes, v.path()),
+        CheckRule::Zettel => crate::rules::find_zettel_source_link_violations(&notes, v.path()),
     };
 
     let items: Vec<RuleViolationOut> = violations
