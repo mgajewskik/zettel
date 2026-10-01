@@ -69,13 +69,57 @@ fn zettel_rule_permanent_to_permanent_ok() {
 }
 
 #[test]
-fn is_permanent_excludes_reserved_dirs() {
+fn zettel_rule_area_to_source_not_flagged() {
+    let dir = tempfile::tempdir().unwrap();
+    write_note(
+        &dir.path().join("area/topic.md"),
+        "---\nid: area-topic\n---\nSee [[source/ref]].\n",
+    );
+    write_note(
+        &dir.path().join("source/ref.md"),
+        "---\nid: source-ref\n---\n# Ref\n",
+    );
+
+    let vault = Vault::open(dir.path()).unwrap();
+    let notes = load_notes(&vault);
+    let v = find_zettel_source_link_violations(&notes, vault.path());
+    assert!(
+        v.is_empty(),
+        "area/** is not a permanent: must not be flagged: {v:?}"
+    );
+}
+
+#[test]
+fn zettel_rule_root_moc_to_source_flagged() {
+    let dir = tempfile::tempdir().unwrap();
+    write_note(
+        &dir.path().join("moc-overview.md"),
+        "---\nid: moc-overview\n---\nSee [[source/ref]].\n",
+    );
+    write_note(
+        &dir.path().join("source/ref.md"),
+        "---\nid: source-ref\n---\n# Ref\n",
+    );
+
+    let vault = Vault::open(dir.path()).unwrap();
+    let notes = load_notes(&vault);
+    let v = find_zettel_source_link_violations(&notes, vault.path());
+    assert_eq!(v.len(), 1);
+    assert!(v[0].source_path.ends_with("moc-overview.md"));
+}
+
+#[test]
+fn is_permanent_only_vault_root_md() {
     let root = Path::new("/vault");
     assert!(is_permanent_note(Path::new("/vault/idea.md"), root));
-    assert!(is_permanent_note(Path::new("/vault/notes/x.md"), root));
+    assert!(is_permanent_note(Path::new("/vault/moc-overview.md"), root));
+    assert!(!is_permanent_note(Path::new("/vault/notes/x.md"), root));
+    assert!(!is_permanent_note(Path::new("/vault/area/x.md"), root));
     assert!(!is_permanent_note(Path::new("/vault/inbox/x.md"), root));
     assert!(!is_permanent_note(Path::new("/vault/source/x.md"), root));
     assert!(!is_permanent_note(Path::new("/vault/project/x.md"), root));
     assert!(!is_permanent_note(Path::new("/vault/archive/x.md"), root));
     assert!(!is_permanent_note(Path::new("/vault/moc/x.md"), root));
+    assert!(!is_permanent_note(Path::new("/vault/docs/x.md"), root));
+    assert!(!is_permanent_note(Path::new("/vault/idea.txt"), root));
 }
