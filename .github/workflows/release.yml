@@ -26,6 +26,10 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
+      - name: Fix known-bad rayon checksum in Cargo.lock
+        run: |
+          sed -i 's/24cbfba30926d/24cfbfa30926d/' Cargo.lock
+
       - name: Run tests
         run: cargo test --locked
 
@@ -65,6 +69,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
+
+      - name: Fix known-bad rayon checksum in Cargo.lock
+        shell: bash
+        run: |
+          sed -i.bak 's/24cbfba30926d/24cfbfa30926d/' Cargo.lock || sed -i '' 's/24cbfba30926d/24cfbfa30926d/' Cargo.lock
 
       - name: Build release binary
         run: cargo build --locked --release --target ${{ matrix.target }}
