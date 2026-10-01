@@ -3,14 +3,14 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use zettel::commands::{self, FindMode};
+use zettel::commands::{self, CheckRule, FindMode};
 use zettel::output::Format;
 
 #[derive(Parser, Debug)]
 #[command(
     name = "zettel",
     version,
-    about = "Obsidian-compatible CLI for wikilinks (links, backlinks, unresolved, find)",
+    about = "Obsidian-compatible CLI for wikilinks (links, backlinks, unresolved, find, check-links)",
     long_about = None
 )]
 struct Cli {
@@ -66,6 +66,20 @@ enum Commands {
         #[arg(long)]
         include_archive: bool,
     },
+    /// Enforce vault link conventions
+    CheckLinks {
+        /// Rule to enforce
+        #[arg(long, value_enum)]
+        rule: CheckRule,
+
+        /// Optional path filters: only check matching *permanent* sources
+        #[arg(value_name = "PATH")]
+        paths: Vec<PathBuf>,
+
+        /// Include permanent notes under archive/ as sources (excluded by default)
+        #[arg(long)]
+        include_archive: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -86,6 +100,17 @@ fn main() -> ExitCode {
             mode,
             include_archive,
         } => commands::cmd_find(cli.vault.clone(), cli.format, query, *mode, *include_archive),
+        Commands::CheckLinks {
+            rule,
+            paths,
+            include_archive,
+        } => commands::cmd_check_links(
+            cli.vault.clone(),
+            cli.format,
+            *rule,
+            paths,
+            *include_archive,
+        ),
     };
 
     match result {
