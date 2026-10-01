@@ -1,0 +1,36 @@
+name: restore-cargo-lock
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/restore-cargo-lock.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore Cargo.lock from known-good commit and fix clap checksum
+        run: |
+          set -euo pipefail
+          if grep -q 'name = "aho-corasick"' Cargo.lock 2>/dev/null; then
+            echo "Cargo.lock already looks valid; skipping"
+            exit 0
+          fi
+          git show 4e8f8ff1c6aa1bacebd928c72c6d6b87afb08761:Cargo.lock \
+            | sed 's/aa8876b30035ba921adea3dfd70157a46249b33f95c9084ae5709785478946/aa8876b300ab35ba921adea3dfd70157a46249b33f95c9084ae5709785478946/' \
+            > Cargo.lock
+          grep -q 'aa8876b300ab35ba' Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock
+          git commit -m "fix: restore Cargo.lock and correct clap 4.6.7 checksum"
+          git push
