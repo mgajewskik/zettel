@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use zettel::commands::{self, CheckRule, FindMode};
+use zettel::commands::{self, CheckRule, CheckScope, FindMode};
 use zettel::output::Format;
 
 #[derive(Parser, Debug)]
@@ -72,11 +72,15 @@ enum Commands {
         #[arg(long, value_enum)]
         rule: CheckRule,
 
+        /// Permanent note scope (default: root = vault-root *.md only)
+        #[arg(long, value_enum, default_value_t = CheckScope::Root)]
+        scope: CheckScope,
+
         /// Optional path filters: only check matching *permanent* sources
         #[arg(value_name = "PATH")]
         paths: Vec<PathBuf>,
 
-        /// Include permanent notes under archive/ as sources (excluded by default)
+        /// Include notes under archive/ as sources (excluded by default; no-op for root scope)
         #[arg(long)]
         include_archive: bool,
     },
@@ -102,12 +106,14 @@ fn main() -> ExitCode {
         } => commands::cmd_find(cli.vault.clone(), cli.format, query, *mode, *include_archive),
         Commands::CheckLinks {
             rule,
+            scope,
             paths,
             include_archive,
         } => commands::cmd_check_links(
             cli.vault.clone(),
             cli.format,
             *rule,
+            *scope,
             paths,
             *include_archive,
         ),
