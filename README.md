@@ -64,7 +64,7 @@ Global flags: `--vault <path>`, `--format text|json` (default: `text`).
 | `zettel unresolved [path…]` | Broken links (optional path filters on **source** notes) |
 | `zettel exists <query>` | Resolve note by id / alias / title / stem / path |
 | `zettel find <query>` | Search by id, path, title, alias, or content |
-| `zettel check-links --rule zettel [path…]` | Flag permanent→`source/**` links (see [RULES.md](RULES.md)) |
+| `zettel check-links --rule zettel [path…]` | Flag root-permanent→`source/**` links (see [RULES.md](RULES.md)) |
 
 `<note>` / `<query>` use core’s stem + kebab-id + alias matching, plus vault-relative paths.
 
@@ -90,9 +90,11 @@ Archive sources (`archive/**`) are excluded by default; pass `--include-archive`
 ### `check-links --rule zettel`
 
 Enforces the public folder convention in [RULES.md](RULES.md): **permanent** notes
-(not under `inbox/`, `source/`, `project/`, `archive/`, `media/`, `canvas/`, `moc/`)
-must not link to `source/**`. Source→permanent links are allowed. Optional path
-filters and `--include-archive` match `unresolved`. Exit **1** on violations.
+are only `*.md` files directly under the vault root (`--scope root`, default).
+Those must not link to `source/**`. Notes in any subdirectory (`area/`, `inbox/`,
+`source/`, `docs/`, …) are out of scope. Root `moc-*.md` files **are** permanents.
+Source→permanent links are allowed. Optional path filters and `--include-archive`
+match `unresolved`. Exit **1** on violations.
 
 ### Examples
 
