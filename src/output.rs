@@ -42,6 +42,17 @@ pub struct BrokenLinkOut {
 }
 
 #[derive(Serialize)]
+pub struct RuleViolationOut {
+    pub source_path: String,
+    pub line: usize,
+    pub text: String,
+    /// Parsed wiki target or markdown URL path (without surrounding markup).
+    pub target: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved_path: Option<String>,
+}
+
+#[derive(Serialize)]
 pub struct NoteOut {
     pub path: String,
     pub id: String,
@@ -193,13 +204,24 @@ pub fn print_broken_text(items: &[BrokenLinkOut]) {
     }
 }
 
+pub fn print_violations_text(items: &[RuleViolationOut]) {
+    for b in items {
+        match &b.resolved_path {
+            Some(rp) => {
+                println!("{}:{}: {} → {} (resolved: {})", b.source_path, b.line, b.text, b.target, rp)
+            }
+            None => println!("{}:{}: {} → {}", b.source_path, b.line, b.text, b.target),
+        }
+    }
+}
+
 pub fn print_notes_text(notes: &[NoteOut]) {
     for n in notes {
         let title = n.title.as_deref().unwrap_or("");
         if title.is_empty() {
-            println!("{}	{}", n.path, n.id);
+            println!("{}\t{}", n.path, n.id);
         } else {
-            println!("{}	{}	{}", n.path, n.id, title);
+            println!("{}\t{}\t{}", n.path, n.id, title);
         }
     }
 }
