@@ -1,0 +1,4 @@
+# obsidian-rs-core 0.6 uses edition 2024 (needs a recent rustc; MSRV target >=1.88).
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
