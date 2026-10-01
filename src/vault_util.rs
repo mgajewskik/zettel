@@ -36,27 +36,33 @@ pub fn default_path_filter(path: &Path) -> bool {
     })
 }
 
+/// Whether `path` matches any of the path filters (prefix under vault, absolute
+/// prefix, or substring of the full / relative path).
+pub fn path_matches_filters(path: &Path, vault_root: &Path, prefixes: &[PathBuf]) -> bool {
+    if prefixes.is_empty() {
+        return true;
+    }
+    let rel = path.strip_prefix(vault_root).unwrap_or(path);
+    prefixes.iter().any(|prefix| {
+        let p = prefix.as_path();
+        path.starts_with(p)
+            || rel.starts_with(p)
+            || path
+                .to_string_lossy()
+                .contains(&*p.to_string_lossy())
+            || rel.to_string_lossy().contains(&*p.to_string_lossy())
+    })
+}
+
 /// Combine default media/canvas filter with optional path-prefix filters.
 /// If `prefixes` is empty, only the default filter applies.
-/// If non-empty, a path must match the default filter AND be under at least one prefix
-/// (or have a relative path starting with / matching any prefix string).
+/// If non-empty, a path must match the default filter AND at least one prefix.
 pub fn make_filter<'a>(vault_root: &'a Path, prefixes: &'a [PathBuf]) -> impl Fn(&Path) -> bool + 'a {
     move |path: &Path| {
         if !default_path_filter(path) {
             return false;
         }
-        if prefixes.is_empty() {
-            return true;
-        }
-        let rel = path.strip_prefix(vault_root).unwrap_or(path);
-        prefixes.iter().any(|prefix| {
-            let p = prefix.as_path();
-            path.starts_with(p)
-                || rel.starts_with(p)
-                || path
-                    .to_string_lossy()
-                    .contains(&*p.to_string_lossy())
-        })
+        path_matches_filters(path, vault_root, prefixes)
     }
 }
 
@@ -74,6 +80,22 @@ mod tests {
         assert!(!default_path_filter(Path::new("media/ignored.md")));
         assert!(!default_path_filter(Path::new("canvas/ignored.md")));
         assert!(!default_path_filter(Path::new("/vault/Media/x.md")));
+    }
+
+    #[test]
+    fn path_matches_substring_and_prefix() {
+        let root = Path::new("/vault");
+        let note = Path::new("/vault/inbox/src.md");
+        assert!(path_matches_filters(
+            note,
+            root,
+            &[PathBuf::from("inbox")]
+        ));
+        assert!(!path_matches_filters(
+            note,
+            root,
+            &[PathBuf::from("project")]
+        ));
     }
 
     #[test]
