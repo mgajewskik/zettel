@@ -22,10 +22,5 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Fix known-bad rayon checksum in Cargo.lock
-        run: |
-          # crates.io-verified checksum; keep until lockfile is regenerated on main
-          sed -i 's/24cbfba30926d/24cfbfa30926d/' Cargo.lock
-
       - name: Run tests
         run: cargo test --locked
