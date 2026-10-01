@@ -4,7 +4,8 @@ Fast, Obsidian-compatible CLI for wikilink graph queries. Single static binary n
 
 Built on [`obsidian-rs-core`](https://crates.io/crates/obsidian-rs-core) (Apache-2.0) for note
 resolution, outbound links, backlinks, vault health checks, and search — this crate does **not**
-reimplement the link graph.
+reimplement the link graph. A thin wrapper adds path-style wiki targets (`[[folder/Note]]`) for
+backlinks and unresolved checks.
 
 ## Install
 
@@ -58,21 +59,40 @@ Global flags: `--vault <path>`, `--format text|json` (default: `text`).
 | Command | Description |
 |---------|-------------|
 | `zettel links <note>` | Outbound wikilinks / markdown links / embeds from a note |
-| `zettel backlinks <note>` | Notes that link to `<note>` |
-| `zettel unresolved [path…]` | Broken links (optional path filters on source notes) |
+| `zettel backlinks <note>` | Notes that link to `<note>` (id / stem / alias **or** path-style) |
+| `zettel unresolved [path…]` | Broken links (optional path filters on **source** notes) |
 | `zettel exists <query>` | Resolve note by id / alias / title / stem / path |
-| `zettel find <query>` | Search by id, title, alias, or content |
+| `zettel find <query>` | Search by id, path, title, alias, or content |
 
-`<note>` / `<query>` use core’s stem + kebab-id + alias matching.
+`<note>` / `<query>` use core’s stem + kebab-id + alias matching, plus vault-relative paths.
+
+### `unresolved` path filters
+
+Filters restrict which **source** notes are reported. Resolution always uses the full vault graph
+(minus `media/` / `canvas/`). Exit **1** when any findings remain after filters; **0** when empty.
+
+Archive sources (`archive/**`) are excluded by default; pass `--include-archive` to opt in.
+
+### `find --mode`
+
+| Mode | Behavior |
+|------|----------|
+| `auto` (default) | id + path + title/alias first; content only if no structural hits |
+| `id` | note id |
+| `path` | vault-relative path substring |
+| `title` | title or alias substring |
+| `content` | note body |
+
+`--include-archive` includes notes under `archive/` (excluded by default).
 
 ### Examples
 
 ```bash
 zettel --vault ./tests/fixtures/vault links alpha
-zettel --vault ./tests/fixtures/vault --format json backlinks beta
-zettel --vault ./tests/fixtures/vault unresolved
+zettel --vault ./tests/fixtures/vault --format json backlinks folder/target
+zettel --vault ./tests/fixtures/vault unresolved inbox
 zettel --vault ./tests/fixtures/vault exists "Alpha Alias"
-zettel --vault ./tests/fixtures/vault find gamma
+zettel --vault ./tests/fixtures/vault find --mode path folder/target
 ```
 
 ### Exit codes
@@ -87,17 +107,14 @@ zettel --vault ./tests/fixtures/vault find gamma
 
 - **text** (default): human-readable lines
 - **json**: pretty-printed JSON for bots / scripts (`--format json`)
+  - `links` / `backlinks`: each link includes `resolved` (bool) and optional `resolved_path`
+  - `unresolved`: each item includes parsed `target`
 
 ## Vault walk filters
 
 Core’s `ignore` crate already skips `.obsidian/` and `.git/`. This CLI additionally filters out
-notes under `media/` and `canvas/` directory components when scanning (`unresolved`, `find`).
-
-## Known gaps (upstream / by design)
-
-- **Path-style wikilinks** like `[[folder/Note]]` are not indexed as first-class targets in
-  `obsidian-rs-core` 0.6 (stem / id / alias matching only). Prefer ids or note stems.
-- No LSP server in this binary (by design).
+notes under `media/` and `canvas/` directory components. `unresolved` and `find` also exclude
+`archive/**` by default (`--include-archive` to include).
 
 ## Development
 
